@@ -37,3 +37,15 @@ bun run examples/plan-apply.ts ci </dev/null
 Plan and applied result JSON go to stdout. The last command simulates a non-interactive CI invocation by redirecting stdin; progress remains on stderr.
 
 See [the `charmcli` correspondence](docs/charmcli-correspondence.md) for the reference mapping and intentional differences.
+
+## Private package
+
+The package is published to GitHub Packages as `@sphr2k/clackcli`. To install it, configure the scope in the consumer's `.npmrc`:
+
+```ini
+@sphr2k:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+always-auth=true
+```
+
+Local installs need a classic GitHub token with `read:packages` and access to the package. Commits pushed to `main` are checked with `bun run typecheck` and `bun test`. Conventional Commits with `fix:`, `feat:`, or a breaking-change marker publish patch, minor, or major releases respectively; other commits do not publish.
