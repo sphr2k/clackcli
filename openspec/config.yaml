@@ -1,0 +1,11 @@
+schema: spec-driven
+
+context: |
+  clackcli is a TypeScript CLI library. Bun is its primary runtime, package
+  manager, test runner, and execution target. sphr2k/charmcli is the Go
+  architectural reference; Clack is an interactive presentation dependency,
+  not a 1:1 Charm replacement.
+
+rules:
+  proposal:
+    - Keep proposals concise and distinguish reusable core contracts from application domains.
