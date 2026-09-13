@@ -96,6 +96,7 @@ describe("interactive Clack adapters", () => {
       [process.execPath, "run", "examples/plan-apply.ts", "apply"],
       {
         cwd: process.cwd(),
+        env: { ...process.env, CI: "false" },
         terminal: {
           cols: 80,
           rows: 24,
