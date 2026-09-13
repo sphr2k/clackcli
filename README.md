@@ -48,4 +48,4 @@ The package is published to GitHub Packages as `@sphr2k/clackcli`. To install it
 always-auth=true
 ```
 
-Local installs need a classic GitHub token with `read:packages` and access to the package. Commits pushed to `main` are checked with `bun run typecheck` and `bun test`. Conventional Commits with `fix:`, `feat:`, or a breaking-change marker publish patch, minor, or major releases respectively; other commits do not publish.
+Local installs need a classic GitHub token with `read:packages` and access to the package. Commits pushed to `main` are checked with `bun run typecheck` and `bun test`. Conventional Commits with `fix:`, `perf:`, or a revert publish patch releases; `feat:` publishes a minor release; breaking changes publish a major release. Ordinary `docs:` and `chore:` commits do not publish.
