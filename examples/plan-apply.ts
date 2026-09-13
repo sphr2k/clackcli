@@ -2,6 +2,7 @@ import {
   createInteractiveConfirmation,
   createReporter,
   createRuntime,
+  renderPlan,
   runPreparedApply,
   writeJsonResult,
   type Plan,
@@ -18,7 +19,7 @@ const runtime = createRuntime();
 const command = process.argv[2] ?? "plan";
 
 if (command === "plan") {
-  writeJsonResult(plan, runtime);
+  runtime.stdout.write(renderPlan(plan));
 } else if (command === "apply" || command === "ci") {
   const activity = command === "ci"
     ? createReporter(runtime, "text").start("Preparing service update")

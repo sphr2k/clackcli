@@ -25,9 +25,10 @@ Bubble Tea equivalent, so its surface cannot and need not be identical.
 ### Explicit runtime and capabilities
 
 Commands receive a runtime with input, stdout, stderr, and detected or
-overridden capabilities. Interactive mode requires a usable input and stderr
-terminal; CI is therefore a capability result rather than a scattered
-`CI`-environment special case. This follows `charmcli.Runtime` while using Bun
+overridden capabilities. By default, interactive mode requires a usable input
+and stderr terminal and is disabled when the CI environment is detected, even
+if both streams report a TTY. Explicit capability injection remains available
+to embedders and tests. This follows `charmcli.Runtime` while using Bun
 stream/TTY APIs.
 
 ### Domain contracts emit data, renderers own presentation
@@ -36,6 +37,16 @@ Domains compute `Plan`, `Change`, `Risk`, and prepared state without importing
 Clack. `apply` consumes prepared state only after a shared confirmation gate.
 This adapts `charmcli/operation` and permits tests to assert data rather than
 terminal sequences.
+
+The library exposes a pure `renderPlan(plan)` formatter for a human-readable
+summary of changes and risks. It does not prepare state, apply mutations, or
+write to a process stream; callers choose where to send the returned text.
+
+After a `Prepared` value is handed to the shared apply runner, its cleanup
+callback runs exactly once regardless of whether the plan is empty, confirmation
+is declined or cancelled, apply succeeds or fails, or confirmation cannot
+proceed. A cleanup error makes the outcome fail; if apply also failed, both
+errors are retained.
 
 ### Clack is one reporter, not the runtime
 

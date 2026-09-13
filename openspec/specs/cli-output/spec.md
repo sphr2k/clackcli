@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Define deterministic progress reporting and structured command results.
+
+## Requirements
 
 ### Requirement: Interactive and text progress modes
 The library SHALL render interactive progress through Clack only when runtime
@@ -9,6 +13,11 @@ progress otherwise.
 - **WHEN** an activity runs with non-interactive capabilities
 - **THEN** it SHALL write a start and terminal result line to stderr without
   ANSI control sequences or box formatting.
+
+#### Scenario: Automatic reporter in CI
+- **WHEN** a command creates the automatic reporter with CI detected
+- **THEN** it SHALL use deterministic text progress even if the terminal streams
+  report a TTY.
 
 ### Requirement: Structured requested results
 The library SHALL support a structured JSON result mode that is ANSI-free and

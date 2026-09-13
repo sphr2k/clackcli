@@ -28,8 +28,8 @@ describe("runPreparedApply", () => {
   test("skips empty plans and always cleans prepared state", async () => {
     let applied = false;
     let confirmed = false;
-    let cleaned = false;
-    const value = prepared("state", () => { cleaned = true; });
+    let cleanups = 0;
+    const value = prepared("state", () => { cleanups += 1; });
     value.plan = plan(0);
 
     const result = await runPreparedApply({
@@ -42,15 +42,15 @@ describe("runPreparedApply", () => {
     expect(result).toMatchObject({ status: "noop", exitCode: 0 });
     expect(applied).toBe(false);
     expect(confirmed).toBe(false);
-    expect(cleaned).toBe(true);
+    expect(cleanups).toBe(1);
   });
 
   test("cleans declined prepared state without applying", async () => {
     let applied = false;
-    let cleaned = false;
+    let cleanups = 0;
 
     const result = await runPreparedApply({
-      prepared: prepared("state", () => { cleaned = true; }),
+      prepared: prepared("state", () => { cleanups += 1; }),
       runtime: runtime(true),
       confirm: async () => false,
       apply: async () => { applied = true; },
@@ -58,14 +58,14 @@ describe("runPreparedApply", () => {
 
     expect(result).toMatchObject({ status: "declined", exitCode: 1 });
     expect(applied).toBe(false);
-    expect(cleaned).toBe(true);
+    expect(cleanups).toBe(1);
   });
 
   test("allows an explicit non-interactive bypass", async () => {
-    let cleaned = false;
+    let cleanups = 0;
 
     const result = await runPreparedApply({
-      prepared: prepared("state", () => { cleaned = true; }),
+      prepared: prepared("state", () => { cleanups += 1; }),
       runtime: runtime(false),
       bypassConfirmation: true,
       confirm: async () => { throw new Error("must not prompt"); },
@@ -73,15 +73,15 @@ describe("runPreparedApply", () => {
     });
 
     expect(result).toMatchObject({ status: "applied", exitCode: 0, value: "applied state" });
-    expect(cleaned).toBe(true);
+    expect(cleanups).toBe(1);
   });
 
   test("requires a non-interactive bypass and cleans state", async () => {
-    let cleaned = false;
+    let cleanups = 0;
     let applied = false;
 
     const result = await runPreparedApply({
-      prepared: prepared("state", () => { cleaned = true; }),
+      prepared: prepared("state", () => { cleanups += 1; }),
       runtime: runtime(false),
       apply: async () => { applied = true; },
     });
@@ -89,35 +89,70 @@ describe("runPreparedApply", () => {
     expect(result.status).toBe("failed");
     expect(result.exitCode).toBe(2);
     expect(applied).toBe(false);
-    expect(cleaned).toBe(true);
+    expect(cleanups).toBe(1);
   });
 
   test("returns failure and cleans state when apply throws", async () => {
-    let cleaned = false;
+    let cleanups = 0;
     const error = new Error("write failed");
 
     const result = await runPreparedApply({
-      prepared: prepared("state", () => { cleaned = true; }),
+      prepared: prepared("state", () => { cleanups += 1; }),
       runtime: runtime(true),
       confirm: async () => true,
       apply: async () => { throw error; },
     });
 
     expect(result).toMatchObject({ status: "failed", exitCode: 2, error });
-    expect(cleaned).toBe(true);
+    expect(cleanups).toBe(1);
   });
 
   test("classifies user cancellation without treating it as a failure", async () => {
-    let cleaned = false;
+    let cleanups = 0;
 
     const result = await runPreparedApply({
-      prepared: prepared("state", () => { cleaned = true; }),
+      prepared: prepared("state", () => { cleanups += 1; }),
       runtime: runtime(true),
       confirm: async () => { throw new UserCancelledError(); },
       apply: async () => {},
     });
 
     expect(result).toMatchObject({ status: "cancelled", exitCode: 130 });
-    expect(cleaned).toBe(true);
+    expect(cleanups).toBe(1);
+  });
+
+  test("classifies a cleanup error after successful apply as failure", async () => {
+    let cleanups = 0;
+    const cleanupError = new Error("cleanup failed");
+
+    const result = await runPreparedApply({
+      prepared: prepared("state", () => { cleanups += 1; throw cleanupError; }),
+      runtime: runtime(true),
+      confirm: async () => true,
+      apply: async () => "applied",
+    });
+
+    expect(result).toMatchObject({ status: "failed", exitCode: 2, error: cleanupError });
+    expect(cleanups).toBe(1);
+  });
+
+  test("retains apply and cleanup errors when both fail", async () => {
+    let cleanups = 0;
+    const applyError = new Error("apply failed");
+    const cleanupError = new Error("cleanup failed");
+
+    const result = await runPreparedApply({
+      prepared: prepared("state", () => { cleanups += 1; throw cleanupError; }),
+      runtime: runtime(true),
+      confirm: async () => true,
+      apply: async () => { throw applyError; },
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.exitCode).toBe(2);
+    expect(result.status === "failed" && result.error).toBeInstanceOf(AggregateError);
+    expect(result.status === "failed" && (result.error as AggregateError).errors)
+      .toEqual([applyError, cleanupError]);
+    expect(cleanups).toBe(1);
   });
 });

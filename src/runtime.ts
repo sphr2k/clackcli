@@ -39,14 +39,15 @@ export function createRuntime(options: RuntimeOptions = {}): Runtime {
   const stdout = options.stdout ?? process.stdout;
   const stderr = options.stderr ?? process.stderr;
   const env = options.env ?? process.env;
+  const ci = options.capabilities?.ci ?? isCI(env);
 
   return {
     input,
     stdout,
     stderr,
     capabilities: {
-      interactive: options.capabilities?.interactive ?? Boolean(input.isTTY && stderr.isTTY),
-      ci: options.capabilities?.ci ?? isCI(env),
+      interactive: options.capabilities?.interactive ?? (Boolean(input.isTTY && stderr.isTTY) && !ci),
+      ci,
     },
   };
 }

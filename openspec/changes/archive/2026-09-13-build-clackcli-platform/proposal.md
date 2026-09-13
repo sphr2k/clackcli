@@ -10,8 +10,12 @@ terminal UI framework equivalent to Charm.
 - Establish Bun as the primary runtime, package manager, test runner, and
   execution target.
 - Add an explicit runtime context for streams and terminal capabilities.
+- Treat CI as non-interactive by default, even when terminal streams report a TTY.
 - Define domain-neutral plan, prepared-state, apply-confirmation, and exit
   contracts.
+- Add a plain-text plan renderer that shows summaries, changes, and risks before
+  any mutation is prepared or applied.
+- Guarantee prepared-state cleanup after every apply outcome.
 - Define interactive Clack, deterministic text/CI, and structured-result
   output modes.
 - Preserve stdout for requested results and use stderr for prompts, progress,

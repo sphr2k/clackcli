@@ -25,7 +25,18 @@ describe("createRuntime", () => {
     expect(runtime.capabilities).toEqual({ interactive: false, ci: false });
   });
 
-  test("detects an interactive terminal and CI environment", () => {
+  test("detects an interactive terminal outside CI", () => {
+    const runtime = createRuntime({
+      input: inputStream(true),
+      stdout: outputStream(true),
+      stderr: outputStream(true),
+      env: {},
+    });
+
+    expect(runtime.capabilities).toEqual({ interactive: true, ci: false });
+  });
+
+  test("disables automatic interactive capability in CI even when streams are TTYs", () => {
     const runtime = createRuntime({
       input: inputStream(true),
       stdout: outputStream(true),
@@ -33,7 +44,7 @@ describe("createRuntime", () => {
       env: { CI: "true" },
     });
 
-    expect(runtime.capabilities).toEqual({ interactive: true, ci: true });
+    expect(runtime.capabilities).toEqual({ interactive: false, ci: true });
   });
 
   test("allows explicit capability injection", () => {

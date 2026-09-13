@@ -6,16 +6,20 @@ changes, and risks without importing Clack or any infrastructure domain.
 
 #### Scenario: Plan-only command
 - **WHEN** a domain produces a plan
-- **THEN** it SHALL be renderable without preparing or applying a mutation.
+- **THEN** it SHALL be renderable as human-readable text without preparing or
+  applying a mutation, including the summary, changes, and risks.
 
-### Requirement: Prepared apply state
-The library SHALL pair a plan with domain-owned prepared state and SHALL
-support deterministic cleanup of that state.
+### Requirement: Prepared apply state cleanup
+The library SHALL pair a plan with domain-owned prepared state and SHALL invoke
+its cleanup callback exactly once after every apply outcome, including empty
+plans, declined or cancelled confirmation, successful or failed apply, and
+confirmation errors. A cleanup error SHALL produce a failed outcome; when apply
+also fails, the outcome SHALL retain both errors.
 
 #### Scenario: Apply is declined
 - **WHEN** a non-empty plan is not confirmed
-- **THEN** prepared state SHALL be cleaned up and the domain apply operation
-  SHALL not run.
+- **THEN** prepared state SHALL be cleaned up exactly once and the domain apply
+  operation SHALL not run.
 
 ### Requirement: Shared confirmation gate
 The library SHALL skip confirmation for empty plans and SHALL require an

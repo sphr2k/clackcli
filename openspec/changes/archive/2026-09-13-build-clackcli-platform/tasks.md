@@ -20,3 +20,10 @@
 
 - [x] 4.1 Document the `charmcli` architectural correspondence and intentional differences.
 - [x] 4.2 Add one minimal Bun example covering plan, interactive apply, and text/CI apply.
+
+## 5. Review follow-ups
+
+- [x] 5.1 Make detected CI disable automatic interactive capability and verify automatic text reporting with TTY streams.
+- [x] 5.2 Add and export a human-readable plan renderer, then demonstrate it in the plan-only example.
+- [x] 5.3 Document cleanup exactly once for every apply outcome and verify cleanup-error classification.
+- [x] 5.4 Run package tests, type checks, and OpenSpec validation.

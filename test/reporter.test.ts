@@ -4,14 +4,14 @@ import { writeJsonResult } from "../src/result";
 import { createRuntime } from "../src/runtime";
 import { inputStream, outputStream } from "./streams";
 
-const captureRuntime = (interactive: boolean) => {
+const captureRuntime = (interactive: boolean, env: Record<string, string | undefined> = {}) => {
   let stdoutText = "";
   let stderrText = "";
   const runtime = createRuntime({
     input: inputStream(interactive),
     stdout: outputStream(interactive, (chunk) => { stdoutText += chunk; }),
     stderr: outputStream(interactive, (chunk) => { stderrText += chunk; }),
-    env: {},
+    env,
   });
   return { runtime, stdout: () => stdoutText, stderr: () => stderrText };
 };
@@ -26,6 +26,14 @@ describe("reporter selection and text progress", () => {
     expect(output.stderr()).toBe("[start] Deploy phase\n[progress] 10% next\n[done] done\n");
     expect(output.stdout()).toBe("");
     expect(output.stderr()).not.toMatch(/\u001b/);
+  });
+
+  test("uses automatic text reporting in CI even when streams are TTYs", () => {
+    const output = captureRuntime(true, { CI: "true" });
+    const activity = createReporter(output.runtime).start("CI update");
+    activity.complete("done");
+
+    expect(output.stderr()).toBe("[start] CI update\n[done] done\n");
   });
 
   test("writes failed terminal status to stderr", () => {
