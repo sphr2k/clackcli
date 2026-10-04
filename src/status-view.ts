@@ -108,11 +108,16 @@ export function writeStatusView(
   mode: StatusViewMode = "auto",
   ui: StatusViewUi = clackUi,
 ): void {
+  const stdoutIsTTY = runtime.stdout.isTTY === true;
   const interactive =
-    mode === "interactive" || (mode === "auto" && runtime.capabilities.interactive);
+    mode === "interactive" ||
+    (mode === "auto" && runtime.capabilities.interactive && stdoutIsTTY);
 
-  if (mode === "interactive" && !runtime.capabilities.interactive) {
-    throw new Error("Interactive status output requires a TTY");
+  if (
+    mode === "interactive" &&
+    (!runtime.capabilities.interactive || !stdoutIsTTY)
+  ) {
+    throw new Error("Interactive status output requires a TTY stdout");
   }
 
   if (!interactive) {
@@ -144,4 +149,3 @@ export function writeStatusView(
     });
   });
 }
-
