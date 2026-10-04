@@ -81,6 +81,54 @@ describe("status view", () => {
     ]);
   });
 
+  test("aligns labels by terminal display width", () => {
+    const output = renderStatusViewText({
+      title: "Example",
+      sections: [
+        {
+          title: "State",
+          rows: [
+            { label: "環境", value: "ready" },
+            { label: "Name", value: "ready" },
+          ],
+        },
+      ],
+    });
+
+    expect(output).toContain("環境   ready");
+    expect(output).toContain("Name   ready");
+  });
+
+  test("closes the interactive guide for an empty final section", () => {
+    const calls: string[] = [];
+    const ui: StatusViewUi = {
+      intro() {},
+      step(message) {
+        calls.push(`step:${message}`);
+      },
+      message(message, options) {
+        calls.push(
+          `message:${message}:${options.symbol?.replace(/\u001b\[[0-9;]*m/g, "")}`,
+        );
+      },
+    };
+    const runtime = createRuntime({
+      input: inputStream(true),
+      stdout: outputStream(true),
+      stderr: outputStream(true),
+      env: {},
+    });
+
+    writeStatusView(
+      runtime,
+      { title: "Example", sections: [{ title: "Empty", rows: [] }] },
+      "interactive",
+      ui,
+    );
+
+    expect(calls).toEqual(["step:Empty", "message::└"]);
+  });
+
   test("falls back to text in non-interactive auto mode", () => {
     let stdout = "";
     const runtime = createRuntime({
@@ -123,4 +171,3 @@ describe("status view", () => {
     expect(output).toContain("bad label   one two three");
   });
 });
-

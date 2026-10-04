@@ -1,4 +1,5 @@
 import { styleText } from "node:util";
+import stringWidth from "fast-string-width";
 import {
   intro as clackIntro,
   log as clackLog,
@@ -78,11 +79,15 @@ function styledIndicator(indicator: StatusIndicator): string {
 }
 
 function labelWidth(rows: StatusViewRow[]): number {
-  return rows.reduce((width, row) => Math.max(width, cell(row.label).length), 0);
+  return rows.reduce(
+    (width, row) => Math.max(width, stringWidth(cell(row.label))),
+    0,
+  );
 }
 
 function rowText(row: StatusViewRow, width: number, interactive: boolean): string {
-  const label = cell(row.label).padEnd(width);
+  const rawLabel = cell(row.label);
+  const label = rawLabel + " ".repeat(Math.max(0, width - stringWidth(rawLabel)));
   const primary = row.status
     ? `${interactive ? styledIndicator(row.status.indicator) : indicatorGlyph(row.status.indicator)} ${cell(row.status.text)}`
     : cell(row.value ?? "");
@@ -127,6 +132,17 @@ export function writeStatusView(
 
   ui.intro(cell(view.title), { output: runtime.stdout, withGuide: true });
 
+  if (view.sections.length === 0) {
+    ui.message("", {
+      output: runtime.stdout,
+      withGuide: true,
+      spacing: 0,
+      symbol: styleText("gray", S_BAR_END),
+      secondarySymbol: styleText("gray", S_BAR),
+    });
+    return;
+  }
+
   const lastSectionIndex = view.sections.length - 1;
   view.sections.forEach((section, sectionIndex) => {
     ui.step(cell(section.title), {
@@ -137,6 +153,16 @@ export function writeStatusView(
 
     const width = labelWidth(section.rows);
     const lastRowIndex = section.rows.length - 1;
+    if (section.rows.length === 0 && sectionIndex === lastSectionIndex) {
+      ui.message("", {
+        output: runtime.stdout,
+        withGuide: true,
+        spacing: 0,
+        symbol: styleText("gray", S_BAR_END),
+        secondarySymbol: styleText("gray", S_BAR),
+      });
+      return;
+    }
     section.rows.forEach((row, rowIndex) => {
       const finalRow = sectionIndex === lastSectionIndex && rowIndex === lastRowIndex;
       ui.message(rowText(row, width, true), {
