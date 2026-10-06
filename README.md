@@ -51,3 +51,27 @@ always-auth=true
 
 Local installs need a classic GitHub token with `read:packages` and access to the package. Commits pushed to `main` are checked with `bun run typecheck` and `bun test`. Conventional Commits with `fix:`, `perf:`, or a revert publish patch releases; `feat:` publishes a minor release; breaking changes publish a major release. Ordinary `docs:` and `chore:` commits do not publish.
 
+
+## Semantic status
+
+Status checks separate assessment (`ok`, `warning`, `critical`, `unknown`) from
+caller-defined lifecycle state. Facts are structured evidence; issues precede
+normal sections, and activity describes ongoing work without assigning health.
+The renderer formats these meanings and never evaluates domain thresholds.
+
+```ts
+writeStatusView(runtime, {
+  title: "Example",
+  summary: { assessment: "ok", label: "Healthy", detail: "No action required" },
+  sections: [{ title: "Recovery", rows: [{
+    kind: "check", label: "Compute", assessment: "ok", state: "stopped",
+    facts: [{ label: "stage", value: "development" }],
+  }] }],
+  footer: { kind: "check", label: "Platform", assessment: "ok", state: "healthy" },
+});
+```
+
+Optional `issues` use `kind: "issue"`, `severity`, `title`, `detail`, `action` and
+`facts`. Sections accept `check`, `fact` and `activity` rows. Facts adapt to the
+output stream's terminal width; text output defaults to 100 columns and remains
+ANSI-free. Legacy `status.indicator` and `details` rows continue to work.

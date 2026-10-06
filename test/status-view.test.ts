@@ -154,7 +154,9 @@ describe("status view", () => {
       env: {},
     });
 
-    expect(() => writeStatusView(runtime, view, "interactive")).toThrow(/requires a TTY/);
+    expect(() => writeStatusView(runtime, view, "interactive")).toThrow(
+      /requires a TTY/,
+    );
   });
 
   test("sanitizes multiline domain values before presentation", () => {
@@ -170,4 +172,137 @@ describe("status view", () => {
 
     expect(output).toContain("bad label   one two three");
   });
+});
+
+const semantic: StatusView = {
+  title: "Example",
+  summary: {
+    assessment: "warning",
+    label: "Degraded",
+    detail: "1 issue requires attention",
+  },
+  issues: [
+    {
+      kind: "issue",
+      severity: "warning",
+      title: "Storage behind",
+      detail: "Still serving",
+      facts: [{ label: "backlog", value: "91 MiB" }],
+      action: "example inspect",
+    },
+  ],
+  sections: [
+    {
+      title: "Recovery",
+      rows: [
+        {
+          kind: "check",
+          label: "Compute",
+          assessment: "ok",
+          state: "stopped",
+          facts: [
+            { label: "tenant", value: "12345678901234567890123456789012" },
+            { label: "stage", value: "development" },
+          ],
+        },
+        { kind: "activity", label: "Backup", state: "running" },
+        {
+          kind: "check",
+          label: "Telemetry",
+          assessment: "unknown",
+          state: "missing",
+        },
+        {
+          kind: "check",
+          label: "Database",
+          assessment: "critical",
+          state: "down",
+        },
+      ],
+    },
+  ],
+  footer: {
+    kind: "check",
+    label: "Platform",
+    assessment: "ok",
+    state: "healthy",
+  },
+};
+
+test("separates assessment from lifecycle and puts issues before context", () => {
+  const output = renderStatusViewText(semantic);
+  expect(output).toContain("● stopped");
+  expect(output).toContain("▲ Degraded");
+  expect(output).toContain("? missing");
+  expect(output).toContain("■ down");
+  expect(output).toContain("↻ running");
+  expect(output.indexOf("Storage behind")).toBeLessThan(
+    output.indexOf("Recovery"),
+  );
+  expect(output).toContain("Action: example inspect");
+});
+
+test("wraps semantic evidence by display width without losing long values", () => {
+  const wide = renderStatusViewText(semantic, 160);
+  const narrow = renderStatusViewText(semantic, 32);
+  expect(wide).toContain(
+    "tenant 12345678901234567890123456789012 · stage development",
+  );
+  expect(narrow.split("\n").every((line) => line.length <= 32)).toBe(true);
+  expect(narrow.replaceAll(/\s/g, "")).toContain(
+    "tenant12345678901234567890123456789012",
+  );
+  expect(narrow).not.toContain("\u001b");
+});
+
+test("sanitizes terminal control sequences in semantic issue facts and actions", () => {
+  const output = renderStatusViewText({
+    title: "Safe",
+    sections: [],
+    issues: [
+      {
+        kind: "issue",
+        severity: "unknown",
+        title: "bad\u001b[31mtitle",
+        facts: [{ value: "\u001b]0;danger\u0007value" }],
+        action: "one\ntwo",
+      },
+    ],
+  });
+  expect(output).toContain("badtitle");
+  expect(output).toContain("value");
+  expect(output).toContain("one two");
+  expect(output).not.toContain("danger");
+  expect(output).not.toContain("\u001b");
+});
+
+test("closes summary-only and footer views once on the injected stdout", () => {
+  for (const view of [
+    { title: "Summary", summary: semantic.summary, sections: [] },
+    semantic,
+  ]) {
+    const output = outputStream(true);
+    const runtime = createRuntime({
+      input: inputStream(true),
+      stdout: output,
+      stderr: outputStream(true),
+      env: {},
+    });
+    const symbols: string[] = [];
+    const ui: StatusViewUi = {
+      intro(_title, options) {
+        expect(options.output).toBe(output);
+      },
+      step(_message, options) {
+        expect(options.output).toBe(output);
+      },
+      message(_message, options) {
+        expect(options.output).toBe(output);
+        symbols.push(options.symbol?.replace(/\u001b\[[0-9;]*m/g, "") ?? "");
+      },
+    };
+    writeStatusView(runtime, view, "interactive", ui);
+    expect(symbols.filter((symbol) => symbol === "└")).toHaveLength(1);
+    expect(symbols.at(-1)).toBe("└");
+  }
 });
