@@ -249,11 +249,14 @@ function blocks(
     if (issue.action) message(`Action: ${issue.action}`);
   }
   view.sections.forEach((section, i) => {
+    const [heading, ...continuations] = wrap(section.title, columns);
     output.push({
       kind: "step",
-      text: cell(section.title),
+      text: heading,
       spacing: i === 0 && !view.summary && !view.issues?.length ? 0 : 1,
     });
+    for (const text of continuations)
+      output.push({ kind: "message", text, spacing: 0 });
     const width = section.rows.reduce(
       (max, row) => Math.max(max, stringWidth(cell(row.label))),
       0,
@@ -268,7 +271,7 @@ function blocks(
   return output;
 }
 export function renderStatusViewText(view: StatusView, columns = 100): string {
-  const lines = [cell(view.title)];
+  const lines = wrap(view.title, columns);
   for (const block of blocks(view, columns, false)) {
     if (block.kind === "step" || block.spacing) lines.push("");
     lines.push(block.text);
@@ -296,7 +299,10 @@ export function writeStatusView(
     runtime.stdout.write(renderStatusViewText(view, columns));
     return;
   }
-  ui.intro(cell(view.title), { output: runtime.stdout, withGuide: true });
+  ui.intro(wrap(view.title, Math.max(1, columns - 4)).join("\n"), {
+    output: runtime.stdout,
+    withGuide: true,
+  });
   const content = blocks(view, Math.max(1, columns - 4), true);
   if (!content.length || content.at(-1)?.kind === "step")
     content.push({ kind: "message", text: "", spacing: 0 });

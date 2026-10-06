@@ -306,3 +306,40 @@ test("closes summary-only and footer views once on the injected stdout", () => {
     expect(symbols.at(-1)).toBe("└");
   }
 });
+
+test("wraps long titles and section headings in text and interactive output", () => {
+  const view: StatusView = {
+    title: "A very long dynamic title",
+    sections: [{ title: "Diagnostics for a very long stage name", rows: [] }],
+  };
+  expect(
+    renderStatusViewText(view, 10)
+      .split("\n")
+      .every((line) => line.length <= 10),
+  ).toBe(true);
+  const output = outputStream(true) as ReturnType<typeof outputStream> & {
+    columns: number;
+  };
+  output.columns = 14;
+  const runtime = createRuntime({
+    input: inputStream(true),
+    stdout: output,
+    stderr: outputStream(true),
+    env: {},
+  });
+  const text: string[] = [];
+  const ui: StatusViewUi = {
+    intro(title) {
+      text.push(...title.split("\n"));
+    },
+    step(message) {
+      text.push(message);
+    },
+    message(message) {
+      text.push(message);
+    },
+  };
+  writeStatusView(runtime, view, "interactive", ui);
+  expect(text.every((line) => line.length <= 10)).toBe(true);
+  expect(text.join(" ")).toContain("dynamic title");
+});
