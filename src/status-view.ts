@@ -10,10 +10,16 @@ import {
 } from "@clack/prompts";
 import type { OutputStream, Runtime } from "./runtime";
 
+import {
+  formatStatusValue,
+  type StatusValue,
+  type StatusValueFormatOptions,
+} from "./status-value";
+
 export type Assessment = "ok" | "warning" | "critical" | "unknown";
 export interface StatusFact {
   label?: string;
-  value: string;
+  value: StatusValue;
 }
 export interface StatusCheck {
   kind: "check";
@@ -33,7 +39,7 @@ export interface StatusIssue {
 export interface StatusFactRow {
   kind: "fact";
   label: string;
-  value: string;
+  value: StatusValue;
 }
 export interface StatusActivity {
   kind: "activity";
@@ -44,7 +50,7 @@ export interface StatusActivity {
 export type StatusIndicator = "active" | "inactive" | "warning" | "error";
 export interface LegacyStatusViewRow {
   label: string;
-  value?: string;
+  value?: StatusValue;
   status?: { indicator: StatusIndicator; text: string };
   details?: string[];
 }
@@ -122,10 +128,15 @@ function legacyIndicator(
       )
     : glyph;
 }
-function factsText(facts: StatusFact[] = []): string[] {
+function factsText(
+  facts: StatusFact[] = [],
+  format: StatusValueFormatOptions = {},
+): string[] {
   return facts
     .map((fact) =>
-      [cell(fact.label ?? ""), cell(fact.value)].filter(Boolean).join(" "),
+      [cell(fact.label ?? ""), cell(formatStatusValue(fact.value, format))]
+        .filter(Boolean)
+        .join(" "),
     )
     .filter(Boolean);
 }
@@ -156,6 +167,7 @@ function rowLines(
   width: number,
   columns: number,
   interactive: boolean,
+  format: StatusValueFormatOptions,
 ): string[] {
   const rawLabel = cell(row.label);
   const label =
@@ -163,7 +175,7 @@ function rowLines(
   if (!row.kind) {
     const primary = row.status
       ? `${legacyIndicator(row.status.indicator, interactive)} ${cell(row.status.text)}`
-      : cell(row.value ?? "");
+      : cell(formatStatusValue(row.value ?? "", format));
     return [
       [label, primary, ...(row.details ?? []).map(cell).filter(Boolean)]
         .filter(Boolean)
@@ -175,8 +187,8 @@ function rowLines(
       ? `${assessmentGlyph(row.assessment ?? "unknown")} ${cell(row.state ?? "")}`
       : row.kind === "activity"
         ? `↻ ${cell(row.state ?? "")}`
-        : cell(row.value ?? "");
-  const facts = factsText("facts" in row ? row.facts : []);
+        : cell(formatStatusValue(row.value ?? "", format));
+  const facts = factsText("facts" in row ? row.facts : [], format);
   const base = [label, primary].filter(Boolean).join("   ");
   const inline = [base, facts.join(" · ")].filter(Boolean).join("   ");
   let lines =
@@ -203,6 +215,7 @@ function blocks(
   view: StatusView,
   columns: number,
   interactive: boolean,
+  format: StatusValueFormatOptions,
 ): Block[] {
   const output: Block[] = [];
   const message = (value: string, spacing = 0) => {
@@ -242,7 +255,7 @@ function blocks(
         spacing: 1,
       });
     if (issue.detail) message(issue.detail);
-    const facts = factsText(issue.facts);
+    const facts = factsText(issue.facts, format);
     if (stringWidth(facts.join(" · ")) <= columns) {
       if (facts.length) message(facts.join(" · "));
     } else for (const fact of facts) message(fact);
@@ -262,17 +275,22 @@ function blocks(
       0,
     );
     for (const row of section.rows)
-      for (const line of rowLines(row, width, columns, interactive))
+      for (const line of rowLines(row, width, columns, interactive, format))
         output.push({ kind: "message", text: line, spacing: 0 });
   });
   if (view.footer)
-    for (const line of rowLines(view.footer, 0, columns, interactive))
+    for (const line of rowLines(view.footer, 0, columns, interactive, format))
       output.push({ kind: "message", text: line, spacing: 1 });
   return output;
 }
-export function renderStatusViewText(view: StatusView, columns = 100): string {
+export function renderStatusViewText(
+  view: StatusView,
+  columns = 100,
+  format: StatusValueFormatOptions = {},
+): string {
+  format = { now: new Date(), ...format };
   const lines = wrap(view.title, columns);
-  for (const block of blocks(view, columns, false)) {
+  for (const block of blocks(view, columns, false, format)) {
     if (block.kind === "step" || block.spacing) lines.push("");
     lines.push(block.text);
   }
@@ -283,6 +301,7 @@ export function writeStatusView(
   view: StatusView,
   mode: StatusViewMode = "auto",
   ui: StatusViewUi = clackUi,
+  format: StatusValueFormatOptions = {},
 ): void {
   const stdoutIsTTY = runtime.stdout.isTTY === true;
   const interactive =
@@ -296,14 +315,17 @@ export function writeStatusView(
   const columns =
     (runtime.stdout as OutputStream & { columns?: number }).columns ?? 100;
   if (!interactive) {
-    runtime.stdout.write(renderStatusViewText(view, columns));
+    runtime.stdout.write(renderStatusViewText(view, columns, format));
     return;
   }
   ui.intro(wrap(view.title, Math.max(1, columns - 4)).join("\n"), {
     output: runtime.stdout,
     withGuide: true,
   });
-  const content = blocks(view, Math.max(1, columns - 4), true);
+  const content = blocks(view, Math.max(1, columns - 4), true, {
+    now: new Date(),
+    ...format,
+  });
   if (!content.length || content.at(-1)?.kind === "step")
     content.push({ kind: "message", text: "", spacing: 0 });
   content.forEach((block, i) => {

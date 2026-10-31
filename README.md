@@ -75,3 +75,50 @@ Optional `issues` use `kind: "issue"`, `severity`, `title`, `detail`, `action` a
 `facts`. Sections accept `check`, `fact` and `activity` rows. Facts adapt to the
 output stream's terminal width; text output defaults to 100 columns and remains
 ANSI-free. Legacy `status.indicator` and `details` rows continue to work.
+
+### Semantic values
+
+CLIs supply domain meaning and raw values; the renderer owns units, dates,
+symbols, alignment and wrapping. `StatusFact.value` and fact-row `value` accept
+strings or tagged values:
+
+```ts
+const view: StatusView = {
+  title: "Releases",
+  sections: [{ title: "Production", rows: [
+    { kind: "check", label: "Release", assessment: "ok", state: "stable" },
+    { kind: "fact", label: "Stable since", value: {
+      kind: "timestamp", value: "2026-10-29T01:17:01Z",
+    } },
+    { kind: "fact", label: "Commit", value: {
+      kind: "link", url: "https://github.com/example/app/commit/abc",
+    } },
+  ] }],
+};
+```
+
+Supported value kinds are `timestamp` (`value`: ISO string or Date),
+`time-range` (`start`, `end`: ISO strings or Dates; optional `relative: true`
+adds relative completion time with the absolute range in parentheses),
+`relative-time` (`value`: ISO string or Date), `duration` (`seconds`: number),
+`bytes` (`value`: number, binary units), and `link` (`url`: string). Timestamp
+rows remain separate rows; nested facts retain responsive inline/wrapped
+rendering. Links render as complete URLs in both text and interactive output.
+
+Timestamps default to UK English (`en-GB`) and the process's local time zone.
+They include seconds and the zone, and respect daylight saving time. Time ranges use minute precision and
+collapse repeated date fields; ranges crossing midnight retain both dates.
+Invalid dates and invalid or negative quantities display `unknown`. Relative times support both past and
+future instants. Set `absolute: true` on a `relative-time` value to include the
+absolute local timestamp in parentheses. The renderer captures one current
+time per view.
+`renderStatusViewText(view, columns, { locale, timeZone, now })` supports explicit
+overrides for deterministic output. `writeStatusView` accepts the same options
+after its optional UI adapter. Low-level helpers `formatLocalDateTime`,
+`formatLocalTimeRange`, `formatDuration`, `formatBytes` and `formatStatusValue` are also exported.
+
+Keep health thresholds, phase-to-assessment mappings, stage ordering and
+repository-specific links in the caller. Authentication, GitHub package lookup
+and domain aggregation do not belong in this presentation library. JSON output
+continues to use `writeJsonResult` with caller-owned data; rendering never
+replaces raw timestamps or numeric values in that data.

@@ -27,3 +27,20 @@ writes only the requested result to stdout.
 - **WHEN** a command selects JSON output
 - **THEN** progress and diagnostics SHALL remain on stderr and stdout SHALL
   contain one JSON result representation.
+
+### Requirement: Semantic status values
+The library SHALL accept raw timestamp, time-range, relative-time, duration, byte-count and
+link values in status fact rows and nested facts. Presentation SHALL remain in
+the library; domain assessment and thresholds SHALL remain in callers.
+
+#### Scenario: Local release timestamp
+- **WHEN** a CLI supplies a timestamp fact row
+- **THEN** the renderer SHALL format it in UK English by default and the local time zone,
+  including seconds and the time zone, on its own row.
+- **AND** explicit locale and time-zone overrides SHALL support deterministic rendering.
+
+#### Scenario: Shared value presentation
+- **WHEN** a semantic quantity or link is supplied in checks, activities or issues
+- **THEN** the same formatting, sanitization and width rules SHALL apply as in fact rows.
+- **AND** invalid timestamps or quantities SHALL display `unknown`.
+- **AND** each rendered view SHALL use one reference time for relative values.
